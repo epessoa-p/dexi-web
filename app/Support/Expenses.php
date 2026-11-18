@@ -133,6 +133,8 @@ final class Expenses
             }
 
             PaymentSource::refund($expense, "Anula {$expense->code} · {$expense->concept}");
+            // Si pagaba trabajos de laboratorio, vuelven a quedar por pagar.
+            LabOrders::onExpenseCancelled($expense);
 
             $expense->update([
                 'status' => 'anulado',

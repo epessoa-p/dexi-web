@@ -152,15 +152,10 @@ class Appointment extends Model
     }
 
     /** Recordatorio por WhatsApp con el texto ya escrito. */
-    public function reminderLink(string $clinic): ?string
+    public function reminderMessage(): ?string
     {
-        $link = $this->patient?->whatsapp_link;
-        if (! $link) {
-            return null;
-        }
-        $when = $this->starts_at->locale('es')->translatedFormat('l j \d\e F \a \l\a\s H:i');
-        $text = "Hola {$this->patient->first_name}, te recordamos tu cita en {$clinic} el {$when} con {$this->professional?->full_name}. Responde SÍ para confirmar. ¡Gracias!";
-
-        return $link . '?text=' . rawurlencode($text);
+        return $this->patient
+            ? \App\Support\Communications::render('recordatorio', $this->patient, \App\Support\Communications::appointmentVars($this))
+            : null;
     }
 }

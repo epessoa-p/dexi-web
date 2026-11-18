@@ -61,8 +61,13 @@ final class Navigation
             ],
             'clinica' => [
                 ['Consultas', 'bi-clipboard2-pulse', 'consultations.index', ['consultations.*'], $use('consultations.view', 'historia_clinica')],
+                ['Planes de tratamiento', 'bi-clipboard2-check', 'treatment-plans.index', ['treatment-plans.*'], $use('treatment_plans.view', 'tratamientos')],
+                ['Laboratorio', 'bi-gem', 'lab-orders.index', ['lab-orders.*'], $use('lab_orders.view', 'laboratorio')],
             ],
             'ventas' => [
+                ['Cobrar', 'bi-cart-plus', 'sales.create', ['sales.create'], $use('sales.create', 'ventas')],
+                ['Ventas', 'bi-receipt', 'sales.index', ['sales.index', 'sales.show'], $use('sales.view', 'ventas')],
+                ['Cuentas por cobrar', 'bi-hourglass-split', 'receivables.index', ['receivables.*'], $use('receivables.view', 'ventas')],
                 ['Caja', 'bi-cash-coin', 'cash.index', ['cash.*'], $use('cash.view', 'caja')],
             ],
             'finanzas' => [
@@ -70,15 +75,29 @@ final class Navigation
                 ['Gastos', 'bi-wallet2', 'expenses.index', ['expenses.*'], $use('expenses.view', 'caja', 'finanzas')],
                 ['Categorías de gasto', 'bi-tags', 'expense-categories.index', ['expense-categories.*'], $use('expense_categories.view', 'caja', 'finanzas')],
             ],
-            'inventario' => [],
+            'inventario' => [
+                ['Productos e insumos', 'bi-box-seam', 'products.index', ['products.*'], $use('products.view', 'inventario')],
+                ['Movimientos (kardex)', 'bi-arrow-down-up', 'stock-movements.index', ['stock-movements.*'], $use('inventory.view', 'inventario')],
+            ],
             'compras' => [
+                ['Compras', 'bi-bag-check', 'purchases.index', ['purchases.index', 'purchases.create', 'purchases.show'], $use('purchases.view', 'compras')],
+                ['Cuentas por pagar', 'bi-hourglass-split', 'purchases.payables', ['purchases.payables'], $use('purchases.view', 'compras')],
                 ['Proveedores', 'bi-truck', 'suppliers.index', ['suppliers.*'], $use('suppliers.view', 'finanzas', 'compras', 'inventario')],
             ],
             'equipo' => [
                 ['Odontólogos y personal', 'bi-person-vcard', 'personal.index', ['personal.*'], $can('personal.view')],
+                ['Comisiones y producción', 'bi-percent', 'commissions.index', ['commissions.index', 'commissions.professional', 'commissions.settlement', 'commissions.rules'], $use('commissions.view', 'comisiones')],
+                ['Mis comisiones', 'bi-wallet', 'commissions.mine', ['commissions.mine'], $tenant && $module('comisiones') && ! $can('commissions.view') && \App\Models\Personal::where('user_id', $user->id)->exists()],
             ],
-            'reportes' => [],
-            'comunicaciones' => [],
+            'reportes' => [
+                ['Reportes', 'bi-bar-chart-line', 'reports.index', ['reports.*'], $tenant && ($can('reports.view') || $can('reports.finance')) && $module('estadisticas')],
+            ],
+            'comunicaciones' => [
+                ['Para enviar hoy', 'bi-whatsapp', 'communications.index', ['communications.index'], $use('communications.view', 'recordatorios')],
+                ['Seguimientos y controles', 'bi-arrow-repeat', 'communications.followups', ['communications.followups'], $use('communications.view', 'recordatorios')],
+                ['Enviados', 'bi-clock-history', 'communications.history', ['communications.history'], $use('communications.view', 'recordatorios')],
+                ['Mensajes', 'bi-chat-square-text', 'communications.templates', ['communications.templates'], $use('communications.view', 'recordatorios')],
+            ],
             'configuracion' => [
                 ['Datos de la clínica', 'bi-hospital', 'settings.edit', ['settings.*'], $tenant && $can('settings.view')],
                 ['Procedimientos y tarifario', 'bi-tags', 'procedures.index', ['procedures.*'], $tenant && $can('procedures.view')],
@@ -88,7 +107,6 @@ final class Navigation
             'administracion' => [
                 ['Consultorios', 'bi-diagram-2', 'branches.index', ['branches.*'], $can('branches.view')],
                 ['Cajas', 'bi-safe', 'cajas.index', ['cajas.*'], $use('cajas.view', 'caja')],
-                ['Usuarios', 'bi-person-gear', 'users.index', ['users.*'], $can('users.view')],
                 ['Cargos y permisos', 'bi-briefcase', 'cargos.index', ['cargos.*'], $can('cargos.view')],
                 ['Mi suscripción', 'bi-patch-check', 'subscription.show', ['subscription.show'], $tenant],
             ],
@@ -96,6 +114,7 @@ final class Navigation
                 ['Clínicas', 'bi-hospital', 'companies.index', ['companies.*'], $super],
                 ['Planes', 'bi-box-seam', 'plans.index', ['plans.*'], $super],
                 ['Suscripciones', 'bi-credit-card-2-front', 'subscriptions.index', ['subscriptions.*'], $super],
+                ['Usuarios', 'bi-person-gear', 'users.index', ['users.*'], $super],
                 ['Roles', 'bi-shield-lock', 'roles.index', ['roles.*'], $super],
                 ['Configuración global', 'bi-sliders', 'global-settings.edit', ['global-settings.*'], $super],
             ],

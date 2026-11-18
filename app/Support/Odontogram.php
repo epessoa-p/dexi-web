@@ -170,13 +170,16 @@ final class Odontogram
     public static function summary(Patient $patient): array
     {
         $open = OdontogramEntry::where('patient_id', $patient->id)->whereNull('resolved_at')->get();
+        // Una caries en dos caras (MO) es UN hallazgo: se cuenta por pieza y condición.
+        $distinct = fn ($entries) => $entries->unique(fn ($e) => $e->tooth . '-' . $e->condition)->count();
         $findings = $open->filter(fn ($e) => self::CONDITIONS[$e->condition][1] === 'hallazgo');
+        $treatments = $open->filter(fn ($e) => self::CONDITIONS[$e->condition][1] === 'tratamiento' && $e->condition !== 'ausente');
 
         return [
-            'findings' => $findings->count(),
+            'findings' => $distinct($findings),
             'teeth_with_findings' => $findings->pluck('tooth')->unique()->count(),
             'missing' => $open->where('condition', 'ausente')->count(),
-            'treatments' => $open->count() - $findings->count(),
+            'treatments' => $distinct($treatments),
         ];
     }
 

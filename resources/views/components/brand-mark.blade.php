@@ -17,7 +17,7 @@
     @if($logoUrl)
         <img src="{{ $logoUrl }}" alt="{{ $title }}" class="brand-logo">
     @else
-        <span class="brand-icon"><x-tooth-icon size="1.05rem" /></span>
+        <span class="brand-icon"><x-tooth-icon size="1.7rem" /></span>
     @endif
 
     <div class="brand-text">

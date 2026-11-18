@@ -35,6 +35,10 @@ class ProcedureController extends Controller
                 ->values(),
             'specialties' => $specialties->where('active', true)->values(),
             'filter' => $filter,
+            // Insumos por procedimiento (módulo inventario): cuántos tiene cada uno.
+            'supplyCounts' => \App\Support\Stock::enabled() && auth()->user()->hasPermissionInCompany('inventory.view', app(\App\Support\Tenancy::class)->company())
+                ? \App\Models\ProcedureSupply::selectRaw('procedure_id, count(*) as n')->groupBy('procedure_id')->pluck('n', 'procedure_id')
+                : null,
             'counts' => [
                 'all' => Procedure::where('active', true)->count(),
                 'no_price' => Procedure::where('active', true)->where('price', '<=', 0)->count(),

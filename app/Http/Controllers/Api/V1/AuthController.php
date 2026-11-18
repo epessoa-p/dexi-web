@@ -47,6 +47,29 @@ class AuthController extends Controller
         return response()->json(['message' => 'Sesión cerrada.']);
     }
 
+    /** Cambiar la contraseña: pide la actual y cierra las demás sesiones (este teléfono sigue dentro). */
+    public function password(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'max:100', 'confirmed', 'different:current_password'],
+        ], [
+            'password.confirmed' => 'La confirmación no coincide con la contraseña nueva.',
+            'password.different' => 'La contraseña nueva tiene que ser distinta de la actual.',
+        ], ['current_password' => 'contraseña actual', 'password' => 'contraseña nueva']);
+
+        $user = $request->user();
+        if (! Hash::check($data['current_password'], $user->password)) {
+            throw ValidationException::withMessages(['current_password' => 'La contraseña actual no es correcta.']);
+        }
+
+        $user->update(['password' => $data['password']]);   // el cast «hashed» del modelo la cifra
+        $current = $user->currentAccessToken()?->id;
+        $user->tokens()->when($current, fn ($q) => $q->where('id', '!=', $current))->delete();
+
+        return response()->json(['message' => 'Contraseña cambiada. Se cerraron las sesiones en otros dispositivos.']);
+    }
+
     public function me(Request $request): JsonResponse
     {
         return response()->json($this->profile($request->user(), $request->attributes->get('tenant_company')));
@@ -75,6 +98,8 @@ class AuthController extends Controller
                 'currency' => settings()->get('regional.currency', null, $company->id),
                 'currency_symbol' => settings()->get('regional.currency_symbol', null, $company->id),
                 'timezone' => settings()->get('regional.timezone', null, $company->id),
+                // Desfase de la clínica respecto de UTC, en minutos: la app muestra la hora de la clínica, no la del teléfono.
+                'utc_offset' => (int) round(now(settings()->get('regional.timezone', 'America/La_Paz', $company->id) ?: 'America/La_Paz')->utcOffset()),
                 'phone' => $company->phone,
                 'address' => $company->address,
                 'logo_url' => $company->logoUrl(),

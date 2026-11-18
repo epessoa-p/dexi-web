@@ -230,7 +230,8 @@ class PatientTest extends TestCase
 
     public function test_pantallas_y_dashboard(): void
     {
-        $patient = $this->patient(['birth_date' => now()->subYears(30)->toDateString(), 'phone' => '70000001']);
+        // «Hoy» en la zona de la clínica (el dashboard compara con su hora, no con UTC).
+        $patient = $this->patient(['birth_date' => now('America/La_Paz')->subYears(30)->toDateString(), 'phone' => '70000001']);
 
         $this->as()->get(route('patients.create', ['name' => 'Ana Pérez']))->assertOk()->assertSee('value="Ana"', false);
         $this->as()->get(route('patients.edit', $patient))->assertOk();

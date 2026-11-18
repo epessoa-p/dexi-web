@@ -60,6 +60,12 @@ class DashboardController extends Controller
             $finance['basics_pending'] = $basics['pending'];
             $finance['basics_total'] = $basics['paid'] + $basics['pending'];
         }
+        if ($module('ventas') && $can('sales.view')) {
+            $paid = fn ($from, $to) => round((float) \App\Models\SalePayment::whereBetween('paid_at', [$from, $to])->whereHas('sale', fn ($q) => $q->valid())->sum('amount'), 2);
+            $finance['income_today'] = $paid(now()->startOfDay(), now()->endOfDay());
+            $finance['income_month'] = $paid(now()->startOfMonth(), now()->endOfMonth());
+            $finance['receivable'] = round((float) \App\Models\Sale::receivable()->sum('balance'), 2);
+        }
         if ($module('finanzas') && $can('accounts.view')) {
             $accounts = FinanceAccount::where('active', true)->get(['balance']);
             $finance['accounts_total'] = round((float) $accounts->sum('balance'), 2);
@@ -102,6 +108,19 @@ class DashboardController extends Controller
             'finance' => $finance,
             'patients' => $patients,
             'today' => $today,
+            // Comunicaciones: cuántos mensajes quedan por enviar (recordatorios de mañana, cumpleaños, controles…).
+            // Inventario: productos bajo el mínimo y lotes por vencer.
+            'inventory' => $module('inventario') && $can('products.view') ? [
+                'low' => \App\Models\Product::where('active', true)->lowStock()->count(),
+                'expiring' => \App\Models\ProductBatch::expiring()->distinct()->count('product_id'),
+            ] : null,
+            // Laboratorio: trabajos atrasados y los que llegan hoy.
+            'lab' => $module('laboratorio') && $can('lab_orders.view') ? [
+                'late' => \App\Models\LabOrder::whereIn('status', ['enviado', 'en_proceso'])->whereNotNull('due_at')->whereDate('due_at', '<', today())->count(),
+                'today' => \App\Models\LabOrder::whereIn('status', ['enviado', 'en_proceso'])->whereDate('due_at', today())->count(),
+                'install' => \App\Models\LabOrder::where('status', 'recibido')->count(),
+            ] : null,
+            'messages' => $module('recordatorios') && $can('communications.view') ? \App\Support\Communications::pendingCount() : null,
             'metrics' => [
                 'users' => $company?->users()->wherePivot('active', true)->count() ?? 0,
                 'personal' => Personal::count(),

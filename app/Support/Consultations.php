@@ -146,6 +146,11 @@ final class Consultations
                 'notes' => $data['notes'] ?? null,
             ]);
 
+            // Si estaba en el plan de tratamiento aprobado, el ítem queda realizado.
+            TreatmentPlans::linkFromConsultation($item);
+            // Los insumos del procedimiento salen del stock del consultorio (aunque falte: ya se hizo).
+            Stock::consumeSupplies($item);
+
             if (! empty($data['mark']) && ! empty($data['tooth'])) {
                 Odontogram::record($consultation->patient, [
                     'tooth' => $data['tooth'], 'condition' => $data['mark'], 'surfaces' => $data['surfaces'] ?? [],

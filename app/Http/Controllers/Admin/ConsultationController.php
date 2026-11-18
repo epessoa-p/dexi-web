@@ -81,6 +81,11 @@ class ConsultationController extends Controller
             'previous' => Consultation::with('professional')->where('patient_id', $patient->id)->whereKeyNot($consultation->id)
                 ->latest('started_at')->limit(5)->get(),
             'marks' => Consultations::ODONTOGRAM_BY_CODE,
+            // Pendientes del plan de tratamiento aprobado (si la clínica tiene el módulo).
+            'openPlan' => app(\App\Support\Tenancy::class)->company()?->planAllows('tratamientos')
+                ? \App\Models\TreatmentPlan::where('patient_id', $patient->id)->whereIn('status', ['borrador', 'presentado'])->latest()->first() : null,
+            'planItems' => app(\App\Support\Tenancy::class)->company()?->planAllows('tratamientos')
+                ? \App\Support\TreatmentPlans::pendingFor($patient) : collect(),
         ]);
     }
 
@@ -131,9 +136,23 @@ class ConsultationController extends Controller
     {
         abort_unless($item->consultation_id === $consultation->id, 404);
         Consultations::ensureOpen($consultation);
+        if ($item->sale_item_id) {
+            return back()->withErrors(['error' => "«{$item->name}» ya fue cobrado: para quitarlo, primero anula la venta."]);
+        }
+        \App\Support\TreatmentPlans::unlink($item);
+        // Los insumos que había descontado vuelven al stock.
+        \App\Support\Stock::restore($item, 'reversal', "Se quitó «{$item->name}» de {$consultation->code}");
         $item->delete();
 
         return back()->with('success', 'Procedimiento quitado (el odontograma no cambia: corrígelo ahí si hace falta).');
+    }
+
+    /** «Hecho hoy» de un ítem del plan de tratamiento aprobado. */
+    public function doPlanItem(Consultation $consultation, \App\Models\TreatmentPlanItem $item)
+    {
+        $done = \App\Support\TreatmentPlans::doInConsultation($consultation, $item);
+
+        return back()->with('success', "Registrado del plan: {$done->name}" . ($done->tooth ? " (pieza {$done->tooth})" : '') . '.');
     }
 
     public function close(Consultation $consultation)

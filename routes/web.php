@@ -17,7 +17,10 @@ use App\Http\Controllers\Admin\PatientDocumentController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\ProcedureController;
 use App\Http\Controllers\Admin\SpecialtyController;
+use App\Http\Controllers\Admin\ReceivableController;
+use App\Http\Controllers\Admin\SaleController;
 use App\Http\Controllers\Admin\SupplierController;
+use App\Http\Controllers\Admin\TreatmentPlanController;
 use App\Http\Controllers\Admin\GlobalSettingsController;
 use App\Http\Controllers\Admin\PersonalController;
 use App\Http\Controllers\Admin\PlanController;
@@ -25,6 +28,13 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Admin\CommissionController;
+use App\Http\Controllers\Admin\LabOrderController;
+use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\PurchaseController;
+use App\Http\Controllers\Admin\StockMovementController;
+use App\Http\Controllers\Admin\CommunicationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SubscriptionController;
@@ -126,7 +136,8 @@ Route::middleware('auth')->group(function () {
     */
 
     // Usuarios
-    Route::prefix('admin/users')->name('users.')->group(function () {
+    // Usuarios: solo el superadmin (módulo de plataforma). Las clínicas dan acceso desde «Odontólogos y personal».
+    Route::middleware('super-admin')->prefix('admin/users')->name('users.')->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('index')->middleware('check-permission:users.view');
         Route::get('/create', [UserController::class, 'create'])->name('create')->middleware('check-permission:users.create');
         Route::post('/', [UserController::class, 'store'])->name('store')->middleware('check-permission:users.create');
@@ -228,12 +239,131 @@ Route::middleware('auth')->group(function () {
             Route::get('/{consultation}/receta', [ConsultationController::class, 'prescription'])->name('prescription')->middleware('check-permission:consultations.view');
         });
 
+        Route::post('atencion/consultas/{consultation}/plan/{item}', [ConsultationController::class, 'doPlanItem'])->name('consultations.plan-item')->middleware(['plan:tratamientos', 'check-permission:consultations.edit']);
+
         Route::prefix('pacientes/{patient}/odontograma')->name('odontogram.')->group(function () {
             Route::get('/', [OdontogramController::class, 'state'])->name('state')->middleware('check-permission:odontogram.view');
             Route::get('/pieza/{tooth}', [OdontogramController::class, 'tooth'])->name('tooth')->whereNumber('tooth')->middleware('check-permission:odontogram.view');
             Route::post('/', [OdontogramController::class, 'store'])->name('store')->middleware('check-permission:odontogram.edit');
             Route::post('/{entry}/quitar', [OdontogramController::class, 'resolve'])->name('resolve')->middleware('check-permission:odontogram.edit');
         });
+    });
+
+    // Ventas y cobros — módulo `ventas`
+    Route::middleware(['tenant', 'plan:ventas'])->group(function () {
+        Route::prefix('ventas')->name('sales.')->group(function () {
+            Route::get('/', [SaleController::class, 'index'])->name('index')->middleware('check-permission:sales.view');
+            Route::get('/cobrar', [SaleController::class, 'create'])->name('create')->middleware('check-permission:sales.create');
+            Route::post('/', [SaleController::class, 'store'])->name('store')->middleware('check-permission:sales.create');
+            Route::get('/{sale}', [SaleController::class, 'show'])->name('show')->middleware('check-permission:sales.view');
+            Route::get('/{sale}/recibo', [SaleController::class, 'receipt'])->name('receipt')->middleware('check-permission:sales.view');
+            Route::post('/{sale}/abonos', [SaleController::class, 'payment'])->name('payment')->middleware('check-permission:receivables.create');
+            Route::post('/{sale}/anular', [SaleController::class, 'cancel'])->name('cancel')->middleware('check-permission:sales.delete');
+        });
+        Route::get('cuentas-por-cobrar', [ReceivableController::class, 'index'])->name('receivables.index')->middleware('check-permission:receivables.view');
+        Route::post('cuentas-por-cobrar/{patient}/abono', [ReceivableController::class, 'pay'])->name('receivables.pay')->middleware('check-permission:receivables.create');
+    });
+
+    // Inventario: productos e insumos, kardex e insumos por procedimiento — módulo `inventario`
+    Route::middleware(['tenant', 'plan:inventario'])->group(function () {
+        Route::prefix('inventario/productos')->name('products.')->group(function () {
+            Route::get('/', [ProductController::class, 'index'])->name('index')->middleware('check-permission:products.view');
+            Route::get('/nuevo', [ProductController::class, 'create'])->name('create')->middleware('check-permission:products.create');
+            Route::post('/', [ProductController::class, 'store'])->name('store')->middleware('check-permission:products.create');
+            Route::get('/{product}', [ProductController::class, 'show'])->name('show')->middleware('check-permission:products.view');
+            Route::get('/{product}/editar', [ProductController::class, 'edit'])->name('edit')->middleware('check-permission:products.edit');
+            Route::put('/{product}', [ProductController::class, 'update'])->name('update')->middleware('check-permission:products.edit');
+            Route::delete('/{product}', [ProductController::class, 'destroy'])->name('destroy')->middleware('check-permission:products.delete');
+        });
+        Route::post('inventario/categorias', [ProductController::class, 'storeCategory'])->name('product-categories.store')->middleware('check-permission:products.create');
+        Route::put('inventario/categorias/{category}', [ProductController::class, 'updateCategory'])->name('product-categories.update')->middleware('check-permission:products.edit');
+
+        Route::prefix('inventario/movimientos')->name('stock-movements.')->group(function () {
+            Route::get('/', [StockMovementController::class, 'index'])->name('index')->middleware('check-permission:inventory.view');
+            Route::get('/nuevo', [StockMovementController::class, 'create'])->name('create')->middleware('check-permission:inventory.create');
+            Route::post('/', [StockMovementController::class, 'store'])->name('store')->middleware('check-permission:inventory.create');
+        });
+
+        Route::get('configuracion/tarifario/{procedure}/insumos', [StockMovementController::class, 'supplies'])->name('procedure-supplies.edit')->middleware('check-permission:inventory.view');
+        Route::post('configuracion/tarifario/{procedure}/insumos', [StockMovementController::class, 'storeSupply'])->name('procedure-supplies.store')->middleware('check-permission:inventory.create');
+        Route::delete('configuracion/tarifario/{procedure}/insumos/{supply}', [StockMovementController::class, 'destroySupply'])->name('procedure-supplies.destroy')->middleware('check-permission:inventory.create');
+    });
+
+    // Compras a proveedores y cuentas por pagar — módulo `compras`
+    Route::middleware(['tenant', 'plan:compras'])->group(function () {
+        Route::prefix('compras')->name('purchases.')->group(function () {
+            Route::get('/', [PurchaseController::class, 'index'])->name('index')->middleware('check-permission:purchases.view');
+            Route::get('/nueva', [PurchaseController::class, 'create'])->name('create')->middleware('check-permission:purchases.create');
+            Route::post('/', [PurchaseController::class, 'store'])->name('store')->middleware('check-permission:purchases.create');
+            Route::get('/{purchase}', [PurchaseController::class, 'show'])->name('show')->middleware('check-permission:purchases.view');
+            Route::post('/{purchase}/recibir', [PurchaseController::class, 'receive'])->name('receive')->middleware('check-permission:purchases.edit');
+            Route::post('/{purchase}/pagos', [PurchaseController::class, 'pay'])->name('pay')->middleware('check-permission:purchases.edit');
+            Route::post('/{purchase}/pagos/{payment}/anular', [PurchaseController::class, 'cancelPayment'])->name('payment.cancel')->middleware('check-permission:purchases.delete');
+            Route::post('/{purchase}/cerrar', [PurchaseController::class, 'close'])->name('close')->middleware('check-permission:purchases.edit');
+            Route::post('/{purchase}/anular', [PurchaseController::class, 'cancel'])->name('cancel')->middleware('check-permission:purchases.delete');
+        });
+        Route::get('cuentas-por-pagar', [PurchaseController::class, 'payables'])->name('purchases.payables')->middleware('check-permission:purchases.view');
+    });
+
+    // Reportes y estadísticas — módulo `estadisticas`
+    Route::middleware(['tenant', 'plan:estadisticas'])->prefix('reportes')->name('reports.')->group(function () {
+        Route::get('/exportar/{section}', [ReportController::class, 'export'])->name('export')->middleware('check-permission:reports.export');
+        Route::get('/{section?}', [ReportController::class, 'index'])->name('index')->middleware('check-permission:reports.view,reports.finance');
+    });
+
+    // Laboratorio dental: órdenes de trabajo — módulo `laboratorio`
+    Route::middleware(['tenant', 'plan:laboratorio'])->prefix('atencion/laboratorio')->name('lab-orders.')->group(function () {
+        Route::get('/', [LabOrderController::class, 'index'])->name('index')->middleware('check-permission:lab_orders.view');
+        Route::get('/nueva', [LabOrderController::class, 'create'])->name('create')->middleware('check-permission:lab_orders.create');
+        Route::post('/', [LabOrderController::class, 'store'])->name('store')->middleware('check-permission:lab_orders.create');
+        Route::post('/pagar/{lab}', [LabOrderController::class, 'pay'])->name('pay')->middleware('check-permission:lab_orders.edit');
+        Route::get('/{order}', [LabOrderController::class, 'show'])->name('show')->middleware('check-permission:lab_orders.view');
+        Route::get('/{order}/editar', [LabOrderController::class, 'edit'])->name('edit')->middleware('check-permission:lab_orders.edit');
+        Route::put('/{order}', [LabOrderController::class, 'update'])->name('update')->middleware('check-permission:lab_orders.edit');
+        Route::post('/{order}/estado', [LabOrderController::class, 'status'])->name('status')->middleware('check-permission:lab_orders.edit');
+        Route::get('/{order}/imprimir', [LabOrderController::class, 'print'])->name('print')->middleware('check-permission:lab_orders.view');
+    });
+
+    // Comisiones de los odontólogos — módulo `comisiones`
+    Route::middleware(['tenant', 'plan:comisiones'])->prefix('equipo/comisiones')->name('commissions.')->group(function () {
+        Route::get('/', [CommissionController::class, 'index'])->name('index')->middleware('check-permission:commissions.view');
+        Route::get('/mias', [CommissionController::class, 'mine'])->name('mine');
+        Route::get('/reglas', [CommissionController::class, 'rules'])->name('rules')->middleware('check-permission:commissions.view');
+        Route::post('/reglas', [CommissionController::class, 'storeRule'])->name('rules.store')->middleware('check-permission:commissions.edit');
+        Route::post('/reglas/momento', [CommissionController::class, 'saveBasis'])->name('rules.basis')->middleware('check-permission:commissions.edit');
+        Route::put('/reglas/{rule}', [CommissionController::class, 'updateRule'])->name('rules.update')->middleware('check-permission:commissions.edit');
+        Route::delete('/reglas/{rule}', [CommissionController::class, 'destroyRule'])->name('rules.destroy')->middleware('check-permission:commissions.edit');
+        Route::get('/profesional/{personal}', [CommissionController::class, 'professional'])->name('professional')->middleware('check-permission:commissions.view');
+        Route::post('/profesional/{personal}/pagar', [CommissionController::class, 'settle'])->name('settle')->middleware('check-permission:commissions.create');
+        Route::get('/liquidaciones/{settlement}', [CommissionController::class, 'settlement'])->name('settlement')->middleware('check-permission:commissions.view');
+        Route::post('/liquidaciones/{settlement}/anular', [CommissionController::class, 'cancelSettlement'])->name('settlement.cancel')->middleware('check-permission:commissions.delete');
+    });
+
+    // Comunicaciones por WhatsApp (wa.me) — módulo `recordatorios`
+    Route::middleware(['tenant', 'plan:recordatorios'])->prefix('comunicaciones')->name('communications.')->group(function () {
+        Route::get('/', [CommunicationController::class, 'index'])->name('index')->middleware('check-permission:communications.view');
+        Route::post('/enviar', [CommunicationController::class, 'send'])->name('send')->middleware('check-permission:communications.create');
+        Route::get('/historial', [CommunicationController::class, 'history'])->name('history')->middleware('check-permission:communications.view');
+        Route::get('/seguimientos', [CommunicationController::class, 'followups'])->name('followups')->middleware('check-permission:communications.view');
+        Route::post('/seguimientos/paciente/{patient}', [CommunicationController::class, 'storeFollowup'])->name('followups.store')->middleware('check-permission:communications.create');
+        Route::post('/seguimientos/{followup}/estado', [CommunicationController::class, 'closeFollowup'])->name('followups.close')->middleware('check-permission:communications.create');
+        Route::get('/mensajes', [CommunicationController::class, 'templates'])->name('templates')->middleware('check-permission:communications.view');
+        Route::post('/mensajes', [CommunicationController::class, 'saveTemplates'])->name('templates.save')->middleware('check-permission:communications.edit');
+    });
+
+    // Planes de tratamiento / presupuestos — módulo `tratamientos`
+    Route::middleware(['tenant', 'plan:tratamientos'])->prefix('atencion/tratamientos')->name('treatment-plans.')->group(function () {
+        Route::get('/', [TreatmentPlanController::class, 'index'])->name('index')->middleware('check-permission:treatment_plans.view');
+        Route::get('/nuevo', [TreatmentPlanController::class, 'create'])->name('create')->middleware('check-permission:treatment_plans.create');
+        Route::post('/', [TreatmentPlanController::class, 'store'])->name('store')->middleware('check-permission:treatment_plans.create');
+        Route::get('/{plan}', [TreatmentPlanController::class, 'show'])->name('show')->middleware('check-permission:treatment_plans.view');
+        Route::get('/{plan}/imprimir', [TreatmentPlanController::class, 'print'])->name('print')->middleware('check-permission:treatment_plans.view');
+        Route::put('/{plan}', [TreatmentPlanController::class, 'update'])->name('update')->middleware('check-permission:treatment_plans.edit');
+        Route::post('/{plan}/estado', [TreatmentPlanController::class, 'status'])->name('status')->middleware('check-permission:treatment_plans.edit');
+        Route::post('/{plan}/items', [TreatmentPlanController::class, 'addItem'])->name('items.store')->middleware('check-permission:treatment_plans.edit');
+        Route::patch('/{plan}/items/{item}', [TreatmentPlanController::class, 'updateItem'])->name('items.update')->middleware('check-permission:treatment_plans.edit');
+        Route::post('/{plan}/items/{item}/realizado', [TreatmentPlanController::class, 'toggleItem'])->name('items.toggle')->middleware('check-permission:treatment_plans.edit');
+        Route::delete('/{plan}/items/{item}', [TreatmentPlanController::class, 'removeItem'])->name('items.destroy')->middleware('check-permission:treatment_plans.edit');
     });
 
     // Tarifario y especialidades — administrativo (lo usan agenda, odontograma, presupuestos y ventas)

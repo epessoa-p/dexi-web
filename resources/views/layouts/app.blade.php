@@ -27,7 +27,9 @@
 <a href="#main" class="visually-hidden-focusable position-absolute top-0 start-0 m-2 btn btn-primary" style="z-index:2000">Saltar al contenido</a>
 
 <div class="app-shell d-flex">
-    <aside class="app-sidebar" aria-label="Navegación">
+    <aside class="app-sidebar" id="appSidebar" aria-label="Navegación">
+        {{-- Antes de pintar: si el usuario lo dejó oculto, que no parpadee al cargar. --}}
+        <script>try { if (localStorage.getItem('dexi.sidebar.hidden') === '1') document.documentElement.classList.add('sidebar-hidden'); } catch (e) {}</script>
         <div class="sidebar-brand">
             <a href="{{ route('dashboard') }}" class="text-decoration-none min-w-0"><x-brand-mark variant="sidebar" /></a>
         </div>
@@ -45,6 +47,10 @@
         <header class="app-topbar">
             <div class="topbar-left">
                 <button class="btn-icon d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebarMobile" aria-controls="appSidebarMobile" aria-label="Abrir menú">
+                    <i class="bi bi-list fs-5"></i>
+                </button>
+                {{-- En pantalla grande: esconder o mostrar el menú lateral (se recuerda). --}}
+                <button class="btn-icon d-none d-lg-grid" type="button" id="sidebarToggle" aria-controls="appSidebar" aria-expanded="true" aria-label="Ocultar el menú" title="Ocultar el menú">
                     <i class="bi bi-list fs-5"></i>
                 </button>
 
@@ -218,6 +224,22 @@
         document.addEventListener('hide.bs.collapse', (event) => remember(event, false));
 
         document.querySelector('.app-sidebar .app-link.active')?.scrollIntoView({ block: 'nearest' });
+
+        // Botón hamburguesa en pantalla grande: oculta o muestra el menú lateral y lo recuerda.
+        const toggle = document.getElementById('sidebarToggle');
+        const sync = () => {
+            const hidden = document.documentElement.classList.contains('sidebar-hidden');
+            const label = hidden ? 'Mostrar el menú' : 'Ocultar el menú';
+            toggle?.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+            toggle?.setAttribute('aria-label', label);
+            toggle?.setAttribute('title', label);
+        };
+        toggle?.addEventListener('click', () => {
+            const hidden = document.documentElement.classList.toggle('sidebar-hidden');
+            try { localStorage.setItem('dexi.sidebar.hidden', hidden ? '1' : '0'); } catch (e) {}
+            sync();
+        });
+        sync();
     })();
 </script>
 @endsection

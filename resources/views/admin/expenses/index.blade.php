@@ -35,6 +35,10 @@
         @endforeach
     </ul>
 
+    @if($commissionsPending !== null)
+        @include('admin.commissions.partials.pending-card', ['pending' => $commissionsPending])
+    @endif
+
     @if($basics)
         @php $prev = $basics['month']->subMonth()->format('Y-m'); $next = $basics['month']->addMonth()->format('Y-m'); @endphp
         <div class="card border-0 shadow-sm mb-3">

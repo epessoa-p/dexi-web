@@ -5,8 +5,8 @@
 @section('content')
 <div class="auth-card">
     <div class="auth-header">
-        <div class="auth-icon"><x-tooth-icon size="2.6rem" /></div>
-        <h1>{{ \App\Support\Brand::appName() }}</h1>
+        <img src="{{ asset('images/logo.webp') }}" alt="{{ \App\Support\Brand::appName() }}" class="auth-logo">
+        <h1 class="visually-hidden">{{ \App\Support\Brand::appName() }}</h1>
         <p>{{ \App\Support\Brand::tagline() }}</p>
     </div>
 

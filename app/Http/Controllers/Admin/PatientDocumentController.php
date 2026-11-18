@@ -57,7 +57,8 @@ class PatientDocumentController extends Controller
 
         // Imágenes y PDF se abren en el navegador; lo demás se descarga.
         $inline = $document->isImage() || $document->mime === 'application/pdf';
-        $name = $document->title . '.' . pathinfo($document->path, PATHINFO_EXTENSION);
+        // El nombre del archivo no admite barras (un título como «Foto 17/11/2026»).
+        $name = str_replace(['/', '\\'], '-', $document->title) . '.' . pathinfo($document->path, PATHINFO_EXTENSION);
 
         return Storage::disk('local')->response($document->path, $name, [], $inline ? 'inline' : 'attachment');
     }

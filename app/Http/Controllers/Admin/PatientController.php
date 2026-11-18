@@ -19,11 +19,11 @@ class PatientController extends Controller
         'resumen' => ['Resumen', 'bi-person-vcard', true],
         'odontograma' => ['Odontograma', 'bi-grid-3x3', true],
         'historia' => ['Historia clínica', 'bi-journal-medical', true],
-        'tratamiento' => ['Plan de tratamiento', 'bi-clipboard2-check', false],
+        'tratamiento' => ['Plan de tratamiento', 'bi-clipboard2-check', true],
         'citas' => ['Citas', 'bi-calendar-event', true],
-        'pagos' => ['Pagos', 'bi-cash-stack', false],
+        'pagos' => ['Pagos', 'bi-cash-stack', true],
         'documentos' => ['Documentos y fotos', 'bi-images', true],
-        'recordatorios' => ['Recordatorios', 'bi-bell', false],
+        'recordatorios' => ['Recordatorios', 'bi-bell', true],
     ];
 
     public function index()
@@ -103,6 +103,28 @@ class PatientController extends Controller
             'consultations' => $tab === 'historia'
                 ? \App\Models\Consultation::with(['professional', 'diagnoses', 'procedures'])->where('patient_id', $patient->id)->latest('started_at')->get()
                 : collect(),
+            'treatments' => (bool) app(\App\Support\Tenancy::class)->company()?->planAllows('tratamientos'),
+            'plans' => $tab === 'tratamiento'
+                ? \App\Models\TreatmentPlan::with(['items', 'professional'])->where('patient_id', $patient->id)->latest()->get()
+                : collect(),
+            // Trabajos de laboratorio del paciente (en la pestaña del plan).
+            'labOrders' => $tab === 'tratamiento' && app(\App\Support\Tenancy::class)->company()?->planAllows('laboratorio')
+                && auth()->user()->hasPermissionInCompany('lab_orders.view', app(\App\Support\Tenancy::class)->company())
+                ? \App\Models\LabOrder::with('lab')->where('patient_id', $patient->id)->latest('id')->get() : null,
+            'sales' => (bool) app(\App\Support\Tenancy::class)->company()?->planAllows('ventas'),
+            'payments' => $tab === 'pagos' ? [
+                'sales' => \App\Models\Sale::with('payments.method')->where('patient_id', $patient->id)->latest('id')->get(),
+                'pending' => \App\Support\Sales::pendingFor($patient),
+            ] : null,
+            // Recordatorios: módulo recordatorios (controles programados y mensajes enviados).
+            'reminders' => (bool) app(\App\Support\Tenancy::class)->company()?->planAllows('recordatorios'),
+            'reminderData' => $tab === 'recordatorios' ? [
+                'followups' => \App\Models\PatientFollowup::with(['creator', 'closer'])->where('patient_id', $patient->id)
+                    ->orderByRaw("status = 'pendiente' desc")->orderBy('due_date')->limit(50)->get(),
+                'communications' => \App\Models\Communication::with('user')->where('patient_id', $patient->id)->latest('id')->limit(50)->get(),
+                'nextAppointment' => \App\Models\Appointment::with(['professional', 'procedure', 'patient'])->where('patient_id', $patient->id)
+                    ->where('starts_at', '>', now())->whereIn('status', ['agendada', 'confirmada'])->orderBy('starts_at')->first(),
+            ] : null,
             'odontogramSummary' => $tab === 'resumen' ? \App\Support\Odontogram::summary($patient) : null,
             'appointments' => in_array($tab, ['citas', 'resumen'], true)
                 ? \App\Models\Appointment::with(['professional', 'procedure'])->where('patient_id', $patient->id)->latest('starts_at')->limit($tab === 'citas' ? 100 : 20)->get()

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /** Procedimiento realizado en una consulta, con su precio congelado al momento. */
 class ConsultationProcedure extends Model
 {
-    protected $fillable = ['consultation_id', 'procedure_id', 'name', 'tooth', 'surfaces', 'quantity', 'price', 'notes'];
+    protected $fillable = ['consultation_id', 'procedure_id', 'name', 'tooth', 'surfaces', 'quantity', 'price', 'notes', 'sale_item_id'];
 
     protected $casts = ['tooth' => 'integer', 'quantity' => 'integer', 'price' => 'decimal:2'];
 

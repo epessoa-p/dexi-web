@@ -16,7 +16,7 @@ class RoleController extends Controller
 
     public function create()
     {
-        $permissions = Permission::all()->groupBy('module');
+        $permissions = Permission::forClinics()->get()->groupBy('module');
         return view('admin.roles.create', compact('permissions'));
     }
 
@@ -31,22 +31,20 @@ class RoleController extends Controller
 
         $role = Role::create($validated);
 
-        if (request('permissions')) {
-            $role->permissions()->attach(request('permissions'));
-        }
+        $role->permissions()->attach($this->clinicPermissionIds());
 
         return redirect()->route('roles.index')->with('success', 'Rol creado exitosamente');
     }
 
     public function show(Role $role)
     {
-        $role->load('permissions');
+        $role->load(['permissions' => fn ($q) => $q->forClinics()]);
         return view('admin.roles.show', compact('role'));
     }
 
     public function edit(Role $role)
     {
-        $permissions = Permission::all()->groupBy('module');
+        $permissions = Permission::forClinics()->get()->groupBy('module');
         $role->load('permissions');
         return view('admin.roles.edit', compact('role', 'permissions'));
     }
@@ -68,7 +66,12 @@ class RoleController extends Controller
         $role->update($validated);
 
         // Sin casillas marcadas el rol queda sin permisos (antes se ignoraba).
-        $role->permissions()->sync(request('permissions', []));
+        // Los de la plataforma no se ven en el formulario: el rol super_admin los conserva; los demás no los tienen.
+        $ids = $this->clinicPermissionIds();
+        if ($role->slug === 'super_admin') {
+            $ids = $ids->merge(Permission::whereIn('module', Permission::PLATFORM_MODULES)->pluck('id'));
+        }
+        $role->permissions()->sync($ids->all());
 
         return redirect()->route('roles.index')->with('success', 'Rol actualizado exitosamente');
     }
@@ -87,5 +90,11 @@ class RoleController extends Controller
         $role->delete();
 
         return redirect()->route('roles.index')->with('success', 'Rol eliminado exitosamente');
+    }
+
+    /** Los permisos marcados, solo los de clínica (los de la plataforma no se reparten por formulario). */
+    private function clinicPermissionIds(): \Illuminate\Support\Collection
+    {
+        return Permission::forClinics()->whereIn('id', (array) request('permissions', []))->pluck('id');
     }
 }

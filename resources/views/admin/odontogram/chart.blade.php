@@ -108,9 +108,9 @@
     .odonto-svg .tooth:focus-visible { outline: none; }
     .odonto-svg .tooth:focus-visible .frame { stroke: var(--brand-base); stroke-width: 2.5; }
     .odonto-svg .frame { fill: none; stroke: #6b7c81; stroke-width: 1.2; pointer-events: none; }
-    .odonto-svg .num { font: 600 11px Inter, sans-serif; fill: #44565b; text-anchor: middle; cursor: pointer; }
+    .odonto-svg .num { font: 600 11px var(--dx-font); fill: #44565b; text-anchor: middle; cursor: pointer; }
     .odonto-svg .num.has { fill: var(--brand-dark); }
-    .odonto-svg .tag { font: 700 9px Inter, sans-serif; text-anchor: middle; pointer-events: none; }
+    .odonto-svg .tag { font: 700 9px var(--dx-font); text-anchor: middle; pointer-events: none; }
     .odonto-svg .is-missing .face { fill: #f1f4f5; }
     .odonto-legend { display: flex; flex-wrap: wrap; gap: .4rem 1rem; margin-top: .6rem; color: var(--dx-muted); }
     .odonto-legend > span { display: inline-flex; align-items: center; gap: .35rem; }
@@ -213,11 +213,14 @@
         const width = widest * (S + GAP) + MID + 8;
         const rowH = S + ROOT * 2 + LABEL + 6;
         svg.setAttribute('viewBox', `0 0 ${width} ${sets.length * rowH + 4}`);
-        svg.setAttribute('width', width);
+        // Escala al ancho disponible (sin barra de desplazamiento) y nunca más grande que su tamaño natural.
+        svg.setAttribute('width', '100%');
+        svg.style.maxWidth = width + 'px';
         sets.forEach((row, r) => {
             const upper = [1, 2, 5, 6].includes(Math.floor(row[0] / 10));
             const offset = (widest - row.length) * (S + GAP) / 2 + 4;
-            const y = r * rowH + ROOT + LABEL;
+            // Superior: número y raíz arriba. Inferior: arriba solo un margen; número y raíz abajo.
+            const y = upper ? r * rowH + ROOT + LABEL : r * rowH + 8;
             row.forEach((tooth, i) => {
                 const half = i >= row.length / 2 ? MID : 0;
                 drawTooth(tooth, offset + i * (S + GAP) + half, y, upper);

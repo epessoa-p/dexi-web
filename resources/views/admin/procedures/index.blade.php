@@ -121,6 +121,11 @@
                                         @endif
                                     </td>
                                     <td class="pe-3 text-end text-nowrap">
+                                        @if($supplyCounts !== null)
+                                            <a href="{{ route('procedure-supplies.edit', $procedure) }}" class="btn btn-sm btn-light" title="Insumos que gasta">
+                                                <i class="bi bi-box-seam"></i>@if($supplyCounts[$procedure->id] ?? 0)<span class="small ms-1">{{ $supplyCounts[$procedure->id] }}</span>@endif
+                                            </a>
+                                        @endif
                                         @if($canEdit)
                                             <button class="btn btn-sm btn-light" title="Editar" data-procedure-open="{{ json_encode($procedure->only(['id', 'code', 'name', 'specialty_id', 'price', 'price_max', 'duration_minutes', 'applies_to', 'color', 'description', 'active'])) }}"><i class="bi bi-pencil"></i></button>
                                         @endif

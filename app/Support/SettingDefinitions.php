@@ -87,6 +87,17 @@ class SettingDefinitions
                 'group' => 'clinic', 'label' => 'Atiende domingos', 'type' => 'bool',
                 'input' => 'switch', 'rules' => ['nullable', 'boolean'], 'default' => false,
             ],
+            'clinic.commission_basis' => [
+                'group' => 'clinic', 'label' => 'Cuándo se ganan las comisiones', 'type' => 'string',
+                'input' => 'select', 'rules' => ['nullable', 'in:cobrado,vendido'], 'default' => 'cobrado',
+                'options' => ['cobrado' => 'Sobre lo cobrado (cada pago del paciente genera su parte)', 'vendido' => 'Al vender (todo de una vez, aunque quede saldo)'],
+                'help' => 'Solo con el módulo de comisiones. Las reglas se definen en Equipo › Comisiones.',
+            ],
+            'clinic.commission_minus_lab' => [
+                'group' => 'clinic', 'label' => 'Descontar el laboratorio de la comisión', 'type' => 'bool',
+                'input' => 'switch', 'rules' => ['nullable', 'boolean'], 'default' => true,
+                'help' => 'El porcentaje del odontólogo se calcula sobre lo cobrado menos el costo del trabajo de laboratorio (corona, prótesis…).',
+            ],
 
             // --- Documentos ---
             'documents.tax_id' => [

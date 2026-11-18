@@ -40,7 +40,7 @@ class PlanSeeder extends Seeder
                 'max_users' => 15,
                 'max_personal' => 30,
                 'max_branches' => 3,
-                'features' => ['agenda', 'historia_clinica', 'tratamientos', 'ventas', 'caja', 'finanzas', 'inventario', 'compras', 'recordatorios'],
+                'features' => ['agenda', 'historia_clinica', 'tratamientos', 'ventas', 'caja', 'finanzas', 'inventario', 'compras', 'recordatorios', 'comisiones', 'laboratorio', 'estadisticas'],
                 'active' => true,
                 'sort_order' => 2,
             ],

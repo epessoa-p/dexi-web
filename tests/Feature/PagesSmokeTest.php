@@ -41,7 +41,6 @@ class PagesSmokeTest extends TestCase
 
         return [
             '/dashboard',
-            '/admin/users', '/admin/users/create',
             '/admin/cargos', '/admin/cargos/create',
             '/admin/personal', '/admin/personal/create',
             '/admin/branches', '/admin/branches/create',
@@ -61,6 +60,16 @@ class PagesSmokeTest extends TestCase
             // Tarifario y agenda
             '/configuracion/tarifario', '/configuracion/especialidades',
             '/agenda', '/agenda/hoy', '/agenda/nueva', '/agenda/disponibilidad',
+            // Atención clínica
+            '/atencion/consultas', '/atencion/consultas?filter=abiertas',
+            '/atencion/tratamientos', '/atencion/tratamientos?filter=cerrados',
+            // Ventas y cobros
+            '/ventas', '/ventas?filter=mes', '/ventas/cobrar', '/cuentas-por-cobrar',
+            '/atencion/laboratorio', '/atencion/laboratorio?filter=pagar', '/atencion/laboratorio?filter=todos', '/atencion/laboratorio/nueva', '/atencion/laboratorio/nueva?q=ana',
+            '/inventario/productos', '/inventario/productos/nuevo', '/inventario/productos?filter=bajo', '/inventario/movimientos', '/inventario/movimientos/nuevo?kind=salida', '/inventario/movimientos/nuevo?kind=traslado',
+            '/compras', '/compras/nueva', '/compras?filter=todas', '/cuentas-por-pagar', '/configuracion/tarifario',
+            '/equipo/comisiones', '/equipo/comisiones?from=2026-01-01', '/equipo/comisiones/reglas', '/finanzas/gastos?tab=personal',
+            '/comunicaciones', '/comunicaciones?dia=hoy', '/comunicaciones?tipo=cumpleanos', '/comunicaciones/seguimientos', '/comunicaciones/historial', '/comunicaciones/mensajes',
         ];
     }
 
@@ -70,7 +79,6 @@ class PagesSmokeTest extends TestCase
         $admin = User::where('email', 'admin@clinicademo.test')->firstOrFail();
 
         $pages = $this->clinicPages($demo);
-        $pages[] = '/admin/users/' . $admin->id . '/edit';
         $pages[] = '/admin/cargos/' . Cargo::forCompany($demo)->value('id') . '/edit';
         $pages[] = '/admin/personal/' . Personal::forCompany($demo)->value('id') . '/edit';
         $pages[] = '/admin/cajas/' . Caja::forCompany($demo)->value('id') . '/edit';

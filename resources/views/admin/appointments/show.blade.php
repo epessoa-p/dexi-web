@@ -16,7 +16,9 @@
         'no_asistio' => ['No asistió', 'bi-person-x', 'outline-danger'],
         'agendada' => ['Volver a agendada', 'bi-arrow-counterclockwise', 'light'],
     ];
-    $reminder = $a->isClosed() ? null : $a->reminderLink($tenantCompany->displayName());
+    $reminder = $a->isClosed() || ! $a->patient ? null : $a->reminderMessage();
+    // Con el módulo de recordatorios se registra el envío; si no, es un enlace wa.me simple.
+    $logReminder = $tenantCompany->planAllows('recordatorios') && $can('communications.create');
 @endphp
 <div class="container-fluid" style="max-width: 1080px;">
     @include('admin.finance.partials.errors')
@@ -42,8 +44,12 @@
                     <button class="btn btn-primary" type="submit"><i class="bi bi-play-fill"></i> Atender</button>
                 </form>
             @endif
-            @if($reminder)
-                <a href="{{ $reminder }}" target="_blank" rel="noopener" class="btn btn-outline-success"><i class="bi bi-whatsapp"></i> Recordar por WhatsApp</a>
+            @if($reminder && $logReminder)
+                @include('admin.communications.partials.sender', ['kind' => 'recordatorio', 'patient' => $a->patient, 'message' => $reminder,
+                    'refs' => ['appointment_id' => $a->id], 'sent' => \App\Models\Communication::where('kind', 'recordatorio')->where('appointment_id', $a->id)->latest('id')->first(),
+                    'label' => 'Recordar por WhatsApp'])
+            @elseif($reminder && \App\Support\Communications::link($a->patient, $reminder))
+                <a href="{{ \App\Support\Communications::link($a->patient, $reminder) }}" target="_blank" rel="noopener" class="btn btn-outline-success"><i class="bi bi-whatsapp"></i> Recordar por WhatsApp</a>
             @endif
             @if($can('appointments.edit') && ! $a->isClosed())
                 <a href="{{ route('appointments.edit', $a) }}" class="btn btn-light"><i class="bi bi-pencil"></i> Editar / reprogramar</a>

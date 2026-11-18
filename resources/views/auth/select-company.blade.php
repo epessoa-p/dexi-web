@@ -5,7 +5,7 @@
 @section('content')
 <div class="auth-card">
     <div class="auth-header">
-        <div class="auth-icon"><x-tooth-icon size="2.6rem" /></div>
+        <div class="auth-icon"><x-tooth-icon size="3.4rem" /></div>
         <h1>Selecciona una clínica</h1>
         <p>Tu cuenta tiene acceso a más de una clínica</p>
     </div>

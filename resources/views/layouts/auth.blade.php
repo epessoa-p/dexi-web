@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', \App\Support\Brand::appName())</title>
+    @include('layouts.partials.favicons')
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
@@ -16,10 +17,13 @@
         }
 
         html, body {
-            height: 100%;
             margin: 0;
             padding: 0;
         }
+
+        /* Misma escala compacta que el panel (public/css/dexi.css). */
+        html { font-size: 14px; }
+        @media (min-width: 1600px) { html { font-size: 15px; } }
 
         body {
             background: linear-gradient(135deg, var(--brand-base) 0%, var(--brand-darkest) 100%);
@@ -27,38 +31,49 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            /* El alto real de la ventana (sin las barras del navegador): sin scroll si el formulario cabe. */
             min-height: 100vh;
+            min-height: 100dvh;
         }
 
         .auth-container {
             width: 100%;
-            max-width: 450px;
-            padding: 20px;
+            max-width: 380px;
+            padding: 1rem;
         }
 
         .auth-card {
             background: white;
-            border-radius: 12px;
+            border-radius: .85rem;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            padding: 40px;
+            padding: 1.75rem 1.9rem;
         }
 
         .auth-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 1.25rem;
+        }
+
+        /* Logo completo de Dexi (diente + «dexi»). */
+        .auth-logo {
+            display: block;
+            width: 88px;
+            height: auto;
+            margin: 0 auto .5rem;
         }
 
         .auth-icon {
             width: 80px;
             height: 80px;
-            background: linear-gradient(135deg, var(--brand-light) 0%, var(--brand-base) 100%);
+            background: #fff;
+            border: 1px solid #e3eaec;
             border-radius: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #fff;
             margin: 0 auto 20px;
-            box-shadow: 0 8px 22px rgba(42, 92, 61, 0.28);
+            box-shadow: 0 8px 22px rgba(14, 159, 154, 0.18);
         }
 
         .tooth-icon { vertical-align: -0.125em; }
@@ -72,15 +87,15 @@
 
         .auth-header p {
             color: #999;
-            font-size: 0.9rem;
-            margin-top: 10px;
+            font-size: .85rem;
+            margin: 0;
         }
 
         .form-control {
-            padding: 12px 15px;
+            padding: .5rem .75rem;
             border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 0.95rem;
+            border-radius: .4rem;
+            font-size: .925rem;
             transition: all 0.3s ease;
         }
 
@@ -90,26 +105,26 @@
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: .9rem;
         }
 
         .form-label {
             color: #555;
             font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 0.95rem;
+            margin-bottom: .3rem;
+            font-size: .85rem;
         }
 
         .btn-login {
             background: linear-gradient(135deg, var(--brand-base) 0%, var(--brand-dark) 100%);
             border: none;
             color: white;
-            padding: 12px 20px;
-            border-radius: 6px;
+            padding: .6rem 1rem;
+            border-radius: .4rem;
             font-weight: 600;
             width: 100%;
             transition: all 0.3s ease;
-            margin-top: 10px;
+            margin-top: .25rem;
         }
 
         .btn-login:hover {
@@ -120,8 +135,10 @@
 
         .alert {
             border: none;
-            border-radius: 6px;
-            margin-bottom: 20px;
+            border-radius: .4rem;
+            margin-bottom: 1rem;
+            padding: .6rem .8rem;
+            font-size: .875rem;
         }
 
         .input-group-text {
@@ -132,9 +149,9 @@
         .remember-me {
             display: flex;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 1rem;
             color: #666;
-            font-size: 0.9rem;
+            font-size: .85rem;
         }
 
         .remember-me input {
@@ -178,14 +195,14 @@
         }
 
         .app-signature-logo {
-            height: 24px;
+            height: 20px;
             width: auto;
             display: block;
         }
 
         @media (max-width: 480px) {
             .auth-card {
-                padding: 25px;
+                padding: 1.4rem 1.25rem;
             }
 
             .auth-header h1 {
@@ -205,7 +222,7 @@
     <div class="auth-container">
         @yield('content')
 
-        @include('partials.signature', ['class' => 'mt-4'])
+        @include('partials.signature', ['class' => 'mt-3'])
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

@@ -30,7 +30,7 @@ class CargoController extends Controller
 
         return view('admin.cargos.create', [
             'roles' => $this->assignableRoles(),
-            'permissions' => Permission::all()->groupBy('module'),
+            'permissions' => Permission::forClinics()->get()->groupBy('module'),
             'companies' => $this->companyOptions(),
         ]);
     }
@@ -55,7 +55,8 @@ class CargoController extends Controller
                 'description' => ['nullable', 'string', 'max:2000'],
                 'active' => ['nullable', 'boolean'],
                 'permissions' => ['nullable', 'array'],
-                'permissions.*' => ['exists:permissions,id'],
+                // Solo permisos de clínica: los de la plataforma no se dan a un cargo.
+                'permissions.*' => [Rule::exists('permissions', 'id')->whereNotIn('module', Permission::PLATFORM_MODULES)],
             ]);
 
             if (!$companyId) {
@@ -115,7 +116,7 @@ class CargoController extends Controller
         return view('admin.cargos.edit', [
             'cargo' => $cargo,
             'roles' => $this->assignableRoles(),
-            'permissions' => Permission::all()->groupBy('module'),
+            'permissions' => Permission::forClinics()->get()->groupBy('module'),
             'companies' => $this->companyOptions(),
         ]);
     }
@@ -146,7 +147,8 @@ class CargoController extends Controller
                 'description' => ['nullable', 'string', 'max:2000'],
                 'active' => ['nullable', 'boolean'],
                 'permissions' => ['nullable', 'array'],
-                'permissions.*' => ['exists:permissions,id'],
+                // Solo permisos de clínica: los de la plataforma no se dan a un cargo.
+                'permissions.*' => [Rule::exists('permissions', 'id')->whereNotIn('module', Permission::PLATFORM_MODULES)],
             ]);
 
             DB::transaction(function () use ($validated, $cargo, $companyId, $request) {

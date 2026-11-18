@@ -25,6 +25,8 @@ class AppointmentController extends Controller
             ->whereBetween('starts_at', [$from, $to])
             ->when($request->query('professional'), fn ($q, $id) => $q->where('personal_id', $id))
             ->when($request->query('patient'), fn ($q, $id) => $q->where('patient_id', $id))
+            // «Solo mis citas»: las del profesional vinculado al usuario.
+            ->when($request->boolean('mine'), fn ($q) => $q->where('personal_id', Personal::where('user_id', $request->user()->id)->value('id') ?? 0))
             ->orderBy('starts_at')->get();
 
         return response()->json([
@@ -38,8 +40,22 @@ class AppointmentController extends Controller
 
     public function show(Appointment $appointment): JsonResponse
     {
-        return response()->json(self::appointment($appointment->load(['patient', 'professional', 'procedure', 'logs.user'])) + [
+        $appointment->load(['patient', 'professional', 'procedure', 'logs.user']);
+        $company = app(Tenancy::class)->company();
+        $active = in_array($appointment->status, ['agendada', 'confirmada'], true);
+        $message = $active && $appointment->patient ? $appointment->reminderMessage() : null;
+
+        return response()->json(self::appointment($appointment) + [
+            // La consulta de esta cita (para «Atender» o «Ver consulta» en la app).
+            'consultation_id' => $appointment->consultation?->id,
             'history' => $appointment->logs->map(fn ($l) => ['description' => $l->description, 'at' => $l->created_at?->toIso8601String(), 'user' => $l->user?->name])->values(),
+            // Recordatorio por WhatsApp con la plantilla de la clínica; se registra con POST /communications/send.
+            'reminder' => $message ? [
+                'message' => $message,
+                'whatsapp_url' => \App\Support\Communications::link($appointment->patient, $message),
+                'log' => $company?->planAllows('recordatorios') && request()->user()->hasPermissionInCompany('communications.create', $company),
+                'sent_at' => \App\Models\Communication::where('kind', 'recordatorio')->where('appointment_id', $appointment->id)->latest('id')->value('created_at')?->toIso8601String(),
+            ] : null,
         ]);
     }
 
@@ -84,6 +100,7 @@ class AppointmentController extends Controller
             'duration_minutes' => $a->duration_minutes,
             'status' => $a->status,
             'status_label' => $a->status_label,
+            'status_color' => Appointment::STATUSES[$a->status][1] ?? 'secondary',
             'next_statuses' => Appointment::TRANSITIONS[$a->status] ?? [],
             'title' => $a->title,
             'reason' => $a->reason,

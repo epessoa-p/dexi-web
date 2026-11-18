@@ -170,6 +170,8 @@ class ExpenseController extends WebExpenseController
             'reference' => $e->reference,
             'notes' => $e->notes,
             'receipt_url' => $e->receipt_url,
+            // Para la app (con el token): la foto o PDF del comprobante.
+            'receipt_path' => $e->receipt ? "/finance/expenses/{$e->id}/receipt" : null,
             'status' => $e->status,
             'cancelled' => $e->isCancelled(),
             'cancel_reason' => $e->cancel_reason,

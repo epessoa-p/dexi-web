@@ -56,6 +56,10 @@ class ExpenseController extends Controller
             'categories' => ExpenseCategory::when($tab !== 'todos', fn ($q) => $q->group($tab))->orderBy('name')->get(),
             'sources' => PaymentSource::available() + (Expense::where('source', 'external')->exists() ? ['external' => 'Pagado por fuera'] : []),
             'basics' => $tab === 'basico' ? BasicServices::month(request('month')) : null,
+            // Pestaña Personal: lo que se debe en comisiones, de cualquier fecha (§6).
+            'commissionsPending' => $tab === 'personal' && \App\Support\Commissions::enabled()
+                && auth()->user()->hasPermissionInCompany('commissions.view', app(\App\Support\Tenancy::class)->company())
+                ? \App\Support\Commissions::pending() : null,
             'from' => $from,
             'to' => $to,
         ]);

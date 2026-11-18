@@ -81,7 +81,9 @@
             $money = fn ($v) => \App\Support\Money::format($v, $company);
             // Accesos rápidos: solo los que el plan y el rol permiten.
             $actions = array_filter([
+                isset($finance['income_today']) && $can('sales.create') ? ['Cobrar', 'bi-cart-plus', route('sales.create'), '#059669'] : null,
                 $today && $can('appointments.create') ? ['Agendar cita', 'bi-calendar-plus', route('appointments.create'), '#7c3aed'] : null,
+                $messages !== null ? [$messages ? "WhatsApp por enviar ({$messages})" : 'Comunicaciones', 'bi-whatsapp', route('communications.index'), '#25a244'] : null,
                 $can('patients.create') ? ['Nuevo paciente', 'bi-person-plus', route('patients.create'), '#2563eb'] : null,
                 $can('patients.view') ? ['Buscar paciente', 'bi-search', route('patients.index'), '#0e9f9a'] : null,
                 Route::has('expenses.create') && isset($finance['expenses_month']) && $can('expenses.create')
@@ -140,6 +142,28 @@
                         </a>
                     </div>
                 @endif
+                @isset($finance['income_today'])
+                    <div class="col-xl-3 col-sm-6">
+                        <a href="{{ route('sales.index') }}" class="card kpi-card text-decoration-none text-reset">
+                            <div class="kpi-icon" style="--tone:#059669"><i class="bi bi-cash-coin"></i></div>
+                            <div class="min-w-0">
+                                <div class="kpi-label">Cobrado hoy</div>
+                                <div class="kpi-value">{{ $money($finance['income_today']) }}</div>
+                                <div class="kpi-hint">{{ $money($finance['income_month']) }} en el mes</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-xl-3 col-sm-6">
+                        <a href="{{ route('receivables.index') }}" class="card kpi-card text-decoration-none text-reset">
+                            <div class="kpi-icon" style="--tone:#dc3545"><i class="bi bi-hourglass-split"></i></div>
+                            <div class="min-w-0">
+                                <div class="kpi-label">Por cobrar</div>
+                                <div class="kpi-value">{{ $money($finance['receivable']) }}</div>
+                                <div class="kpi-hint">saldos de pacientes</div>
+                            </div>
+                        </a>
+                    </div>
+                @endisset
                 @isset($finance['expenses_month'])
                     <div class="col-xl-3 col-sm-6">
                         <a href="{{ route('expenses.index', ['tab' => 'todos']) }}" class="card kpi-card text-decoration-none text-reset">
@@ -189,6 +213,41 @@
             </div>
         @endif
 
+        @if($lab && ($lab['late'] || $lab['today'] || $lab['install']))
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                @if($lab['late'])
+                    <a href="{{ route('lab-orders.index', ['filter' => 'atrasados']) }}" class="alert alert-danger d-flex align-items-center gap-2 mb-0 py-2 text-decoration-none flex-fill">
+                        <i class="bi bi-gem"></i> <span><strong>{{ $lab['late'] }}</strong> {{ $lab['late'] === 1 ? 'trabajo de laboratorio atrasado' : 'trabajos de laboratorio atrasados' }}</span> <i class="bi bi-chevron-right ms-auto"></i>
+                    </a>
+                @endif
+                @if($lab['today'])
+                    <a href="{{ route('lab-orders.index') }}" class="alert alert-info d-flex align-items-center gap-2 mb-0 py-2 text-decoration-none flex-fill">
+                        <i class="bi bi-truck"></i> <span><strong>{{ $lab['today'] }}</strong> {{ $lab['today'] === 1 ? 'trabajo llega' : 'trabajos llegan' }} hoy del laboratorio</span> <i class="bi bi-chevron-right ms-auto"></i>
+                    </a>
+                @endif
+                @if($lab['install'])
+                    <a href="{{ route('lab-orders.index', ['filter' => 'recibidos']) }}" class="alert alert-primary d-flex align-items-center gap-2 mb-0 py-2 text-decoration-none flex-fill">
+                        <i class="bi bi-box-arrow-in-down"></i> <span><strong>{{ $lab['install'] }}</strong> por instalar: agenda al paciente</span> <i class="bi bi-chevron-right ms-auto"></i>
+                    </a>
+                @endif
+            </div>
+        @endif
+
+        @if($inventory && ($inventory['low'] || $inventory['expiring']))
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                @if($inventory['low'])
+                    <a href="{{ route('products.index', ['filter' => 'bajo']) }}" class="alert alert-warning d-flex align-items-center gap-2 mb-0 py-2 text-decoration-none flex-fill">
+                        <i class="bi bi-box-seam"></i> <span><strong>{{ $inventory['low'] }}</strong> {{ $inventory['low'] === 1 ? 'producto está' : 'productos están' }} en o bajo el mínimo</span> <i class="bi bi-chevron-right ms-auto"></i>
+                    </a>
+                @endif
+                @if($inventory['expiring'])
+                    <a href="{{ route('products.index', ['filter' => 'vencer']) }}" class="alert alert-danger d-flex align-items-center gap-2 mb-0 py-2 text-decoration-none flex-fill">
+                        <i class="bi bi-hourglass-bottom"></i> <span><strong>{{ $inventory['expiring'] }}</strong> con lotes vencidos o por vencer</span> <i class="bi bi-chevron-right ms-auto"></i>
+                    </a>
+                @endif
+            </div>
+        @endif
+
         @if($actions)
             <h2 class="h6 text-muted text-uppercase fw-bold mb-2" style="letter-spacing:.05em">Accesos rápidos</h2>
             <div class="row g-2 g-md-3 mb-4">
@@ -212,8 +271,13 @@
                                         <span class="avatar">{{ $birthday->initials }}</span>
                                         <a href="{{ route('patients.show', $birthday) }}" class="flex-fill text-decoration-none text-reset fw-semibold">{{ $birthday->full_name }}
                                             <span class="small text-muted fw-normal d-block">{{ $birthday->age_label }}</span></a>
-                                        @if($birthday->whatsapp_link)
-                                            <a href="{{ $birthday->whatsapp_link }}?text={{ rawurlencode('¡Feliz cumpleaños, ' . $birthday->first_name . '! Te saluda ' . $company->displayName() . ' 🦷🎉') }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success"><i class="bi bi-whatsapp"></i> Saludar</a>
+                                        @php $greeting = \App\Support\Communications::render('cumpleanos', $birthday); @endphp
+                                        @if($messages !== null && $can('communications.create'))
+                                            @include('admin.communications.partials.sender', ['kind' => 'cumpleanos', 'patient' => $birthday, 'message' => $greeting,
+                                                'sent' => \App\Models\Communication::where('kind', 'cumpleanos')->where('patient_id', $birthday->id)->where('created_at', '>=', today())->first(),
+                                                'class' => 'btn-sm', 'label' => 'Saludar'])
+                                        @elseif($birthday->whatsapp_link)
+                                            <a href="{{ \App\Support\Communications::link($birthday, $greeting) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success"><i class="bi bi-whatsapp"></i> Saludar</a>
                                         @endif
                                     </li>
                                 @endforeach

@@ -79,13 +79,33 @@ class MultiTenancyTest extends TestCase
         $this->assertSame($this->sonrisa->id, $caja->company_id);
     }
 
-    public function test_un_admin_no_ve_usuarios_de_otra_clinica(): void
+    public function test_usuarios_es_solo_del_superadmin(): void
     {
         $ajeno = $this->user('admin@clinicademo.test');
+        $admin = $this->user('admin@sonrisa.test');
 
-        $this->actingAs($this->user('admin@sonrisa.test'))
-            ->get("/admin/users/{$ajeno->id}/edit")
-            ->assertNotFound();
+        // El admin de clínica no entra a Usuarios (ni a los suyos ni a los ajenos) y no lo ve en el menú.
+        $this->actingAs($admin)->get('/admin/users')->assertForbidden();
+        $this->actingAs($admin)->get("/admin/users/{$ajeno->id}/edit")->assertForbidden();
+        $this->actingAs($admin)->get('/dashboard')->assertOk()->assertDontSee('/admin/users', false);
+
+        $this->actingAs($this->user('superadmin@dexi.test'))->get('/admin/users')->assertOk();
+    }
+
+    public function test_los_permisos_de_la_plataforma_no_se_reparten_a_las_clinicas(): void
+    {
+        $admin = $this->user('admin@clinicademo.test');
+        $this->assertFalse($admin->hasPermissionInCompany('users.view', Company::where('ruc', '1000000001')->first()));
+
+        // La pantalla de permisos del cargo no muestra Usuarios, Clínicas, Planes, Suscripciones ni Roles.
+        $usersView = \App\Models\Permission::where('slug', 'users.view')->firstOrFail();
+        $this->actingAs($admin)->get('/admin/cargos/create')->assertOk()
+            ->assertDontSee('value="' . $usersView->id . '"', false);
+
+        // Ni mandando el formulario a mano.
+        $this->actingAs($admin)->post('/admin/cargos', [
+            'name' => 'Intruso', 'role_mode' => 'new', 'new_role_name' => 'Rol intruso', 'permissions' => [$usersView->id],
+        ])->assertSessionHasErrors('permissions.0');
     }
 
     public function test_usuario_multi_clinica_cambia_de_clinica(): void
@@ -107,9 +127,9 @@ class MultiTenancyTest extends TestCase
 
     public function test_sin_permiso_responde_403(): void
     {
-        // El odontólogo no tiene users.view.
+        // El odontólogo no tiene cargos.view.
         $this->actingAs($this->user('odontologo@clinicademo.test'))
-            ->get('/admin/users')
+            ->get('/admin/cargos')
             ->assertForbidden();
     }
 
@@ -119,7 +139,7 @@ class MultiTenancyTest extends TestCase
         $this->actingAs($this->user('superadmin@dexi.test'))->get('/admin/companies')->assertOk();
     }
 
-    public function test_un_admin_de_clinica_no_puede_crear_superadmins(): void
+    public function test_un_admin_de_clinica_no_puede_crear_usuarios_ni_superadmins(): void
     {
         $this->actingAs($this->user('admin@sonrisa.test'))->post('/admin/users', [
             'name' => 'intruso',
@@ -128,11 +148,9 @@ class MultiTenancyTest extends TestCase
             'password_confirmation' => 'Secreta123',
             'role_id' => \App\Models\Role::where('slug', 'cajero')->value('id'),
             'is_super_admin' => 1,
-        ])->assertRedirect('/admin/users');
+        ])->assertForbidden();
 
-        $intruso = $this->user('intruso@test.test');
-        $this->assertFalse($intruso->is_super_admin);
-        $this->assertTrue($intruso->companies()->whereKey($this->sonrisa->id)->exists());
+        $this->assertFalse(User::where('email', 'intruso@test.test')->exists());
     }
 
     // ── §6 Plan ──────────────────────────────────────────────────────────────

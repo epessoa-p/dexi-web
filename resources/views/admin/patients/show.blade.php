@@ -87,7 +87,7 @@
             <a href="{{ route('patients.show', [$p, 'tab' => $key]) }}" class="{{ $tab === $key ? 'active' : '' }}" @if($tab === $key) aria-current="page" @endif>
                 <i class="bi {{ $icon }}"></i> {{ $label }}
                 @if($key === 'documentos' && $p->documents_count)<span class="badge rounded-pill bg-light text-dark border">{{ $p->documents_count }}</span>@endif
-                @unless($ready && ($key !== 'citas' || $agenda) && (! in_array($key, ['odontograma', 'historia'], true) || $clinical))<span class="soon">pronto</span>@endunless
+                @unless($ready && ($key !== 'citas' || $agenda) && (! in_array($key, ['odontograma', 'historia'], true) || $clinical) && ($key !== 'tratamiento' || $treatments) && ($key !== 'pagos' || $sales))<span class="soon">pronto</span>@endunless
             </a>
         @endforeach
     </nav>
@@ -100,8 +100,14 @@
         </div></div>
     @elseif($tab === 'historia' && $clinical && $can('consultations.view'))
         @include('admin.patients.partials.history')
+    @elseif($tab === 'tratamiento' && $treatments && $can('treatment_plans.view'))
+        @include('admin.patients.partials.plans')
+    @elseif($tab === 'pagos' && $sales && $can('sales.view'))
+        @include('admin.patients.partials.payments')
     @elseif($tab === 'citas' && $agenda)
         @include('admin.patients.partials.appointments')
+    @elseif($tab === 'recordatorios' && $reminders && $can('communications.view'))
+        @include('admin.patients.partials.reminders')
     @elseif($tab === 'documentos')
         @include('admin.patients.partials.documents')
     @else

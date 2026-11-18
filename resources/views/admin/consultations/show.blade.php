@@ -54,6 +54,9 @@
                     <span class="badge bg-success fs-6"><i class="bi bi-lock-fill"></i> Cerrada {{ $c->closed_at?->format('d/m H:i') }}</span>
                 @endif
                 <a href="{{ route('consultations.prescription', $c) }}" target="_blank" class="btn btn-light"><i class="bi bi-printer"></i> Receta</a>
+                @if($tenantCompany->planAllows('ventas') && $can('sales.create') && $c->procedures->whereNull('sale_item_id')->isNotEmpty())
+                    <a href="{{ route('sales.create', ['patient_id' => $p->id, 'consultation_id' => $c->id]) }}" class="btn {{ $open ? 'btn-light' : 'btn-primary' }}"><i class="bi bi-cash-coin"></i> Cobrar {{ $money($c->procedures->whereNull('sale_item_id')->sum(fn ($i) => $i->subtotal)) }}</a>
+                @endif
                 @if($canEdit)
                     <button type="button" class="btn btn-primary" id="closeBtn"><i class="bi bi-check2-circle"></i> Cerrar y firmar</button>
                 @endif
@@ -170,6 +173,42 @@
                 @endif
             </section>
 
+            {{-- Plan de tratamiento: lo pendiente del plan aprobado, «hecho hoy» en un clic --}}
+            @if($tenantCompany->planAllows('tratamientos') && $can('treatment_plans.view'))
+                <section class="card form-section">
+                    <div class="card-header"><span class="section-icon" style="--tone:#7c3aed"><i class="bi bi-clipboard2-check"></i></span> Plan de tratamiento
+                        @if($planItems->isNotEmpty())<span class="section-hint">{{ $planItems->first()->plan->code }} · {{ $planItems->count() }} pendientes</span>@endif</div>
+                    @if($planItems->isNotEmpty())
+                        <ul class="list-group list-group-flush">
+                            @foreach($planItems->take(8) as $planItem)
+                                <li class="list-group-item d-flex align-items-center gap-2">
+                                    @if($planItem->tooth)<span class="badge bg-light text-dark border tabular">{{ $planItem->tooth }}{{ $planItem->surfaces ? ' ' . $planItem->surfaces : '' }}</span>@endif
+                                    <span class="flex-fill small"><span class="fw-semibold">{{ $planItem->name }}</span> <span class="text-muted">· fase {{ $planItem->phase }}</span></span>
+                                    @if($canEdit)
+                                        <form method="POST" action="{{ route('consultations.plan-item', [$c, $planItem]) }}" class="m-0">
+                                            @csrf
+                                            <button class="btn btn-sm btn-outline-success" type="submit" title="Registrar como realizado hoy"><i class="bi bi-check-lg"></i> Hecho hoy</button>
+                                        </form>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                        <div class="card-body py-2 small"><a href="{{ route('treatment-plans.show', $planItems->first()->plan) }}" class="text-decoration-none">Ver el plan completo</a></div>
+                    @else
+                        <div class="card-body small">
+                            @if($openPlan)
+                                <p class="mb-2">Hay un plan <strong>{{ $openPlan->status_label }}</strong>: {{ $openPlan->title }} ({{ $openPlan->code }}).</p>
+                                <a href="{{ route('treatment-plans.show', $openPlan) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-clipboard2-check"></i> Ver y presentar el plan</a>
+                            @else
+                            <p class="text-muted mb-2">No hay un plan aprobado en curso.</p>
+                            @endif
+                            @if(! $openPlan && $can('treatment_plans.create'))
+                                <a href="{{ route('treatment-plans.create', ['patient_id' => $p->id, 'consultation_id' => $c->id]) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-clipboard2-plus"></i> Armar plan con los hallazgos del odontograma</a>
+                            @endif
+                        </div>
+                    @endif
+                </section>
+            @endif
             {{-- Procedimientos realizados --}}
             <section class="card form-section" id="procedures-card">
                 <div class="card-header"><span class="section-icon" style="--tone:#059669"><i class="bi bi-tools"></i></span> Realizado hoy
